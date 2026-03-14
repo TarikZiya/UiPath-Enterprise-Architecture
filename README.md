@@ -77,7 +77,15 @@ Workflows should remain readable and modular.
 Maintainability is prioritized over quick implementation.
 
 ---
+### 5. Resilient UI Interactions (UI Drift Tolerance)
 
+Web and desktop interfaces change constantly. This architecture does not rely on fragile, default selectors.
+
+- **Custom Attributes:** Enforcing the use of `data-QA` or stable custom attributes instead of dynamic IDs.
+- **Strategic Fallbacks:** Implementing layered element identification (Strict Selectors -> Wildcards -> Anchor Base -> Computer Vision) only when architecturally justified.
+- **State Machine Recovery:** Handling total UI failures (like unexpected pop-ups or layout swaps) through state-driven recovery rather than simple delays.
+
+---
 ## Architectural Layers
 
 The planned architecture consists of:
@@ -129,7 +137,8 @@ The intention is not to replace REFramework, but to evolve it for enterprise-lev
 - [ ] AI-assisted transaction example
 - [ ] Performance and scaling notes
 - [ ] Agentic RPA: LLM-based decision making in transaction processing
-
+- [ ] UI Resilience Demo: Handling Selector Drift & UI Swaps
+- [ ] Architecture Decision Records (ADR-001: Exception Taxonomy, ADR-002: UI Interaction Standards)
 ---
 
 ## Target Audience
