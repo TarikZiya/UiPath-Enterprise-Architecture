@@ -1,0 +1,1240 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tarık's Invoice Playground — MVP</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Syne:wght@400;600;700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0c0e14;
+    --surface: #141720;
+    --surface2: #1c2030;
+    --border: #252a3a;
+    --accent: #4fffb0;
+    --accent2: #ff6b35;
+    --warn: #ffd166;
+    --danger: #ff4560;
+    --info: #6eb5ff;
+    --text: #e8eaf0;
+    --muted: #6b7594;
+    --mono: 'IBM Plex Mono', monospace;
+    --display: 'Syne', sans-serif;
+    --body: 'Inter', sans-serif;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: var(--bg); color: var(--text); font-family: var(--body); min-height: 100vh; }
+
+  /* LAYOUT */
+  .shell { display: grid; grid-template-columns: 300px 1fr; grid-template-rows: 56px 1fr; min-height: 100vh; }
+
+  /* TOPBAR */
+  .topbar {
+    grid-column: 1/-1;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; padding: 0 24px; gap: 16px;
+  }
+  .logo { font-family: var(--display); font-weight: 800; font-size: 18px; letter-spacing: -0.5px; color: var(--text); }
+  .logo span { color: var(--accent); }
+  .badge {
+    font-family: var(--mono); font-size: 10px; letter-spacing: 1px;
+    background: rgba(79,255,176,0.08); border: 1px solid rgba(79,255,176,0.2);
+    color: var(--accent); padding: 2px 8px; border-radius: 3px;
+  }
+  .badge.mvp { background: rgba(255,209,102,0.08); border-color: rgba(255,209,102,0.2); color: var(--warn); }
+  .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+  .top-pill {
+    display: flex; align-items: center; gap: 6px;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 5px; padding: 4px 12px;
+    font-family: var(--mono); font-size: 11px; color: var(--muted);
+  }
+  .top-pill strong { color: var(--text); font-weight: 500; }
+  .top-pill.green strong { color: var(--accent); }
+  .top-pill.yellow strong { color: var(--warn); }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+  /* SIDEBAR */
+  .sidebar {
+    background: var(--surface); border-right: 1px solid var(--border);
+    padding: 20px 0; overflow-y: auto; display: flex; flex-direction: column; gap: 0;
+  }
+  .sb-section { padding: 0 16px 20px; border-bottom: 1px solid var(--border); margin-bottom: 0; }
+  .sb-section:last-child { border-bottom: none; }
+  .sb-label {
+    font-family: var(--mono); font-size: 9px; letter-spacing: 2px;
+    text-transform: uppercase; color: var(--muted); margin-bottom: 12px;
+    padding-top: 16px; display: block;
+  }
+
+  /* Anchor Mode */
+  .anchor-banner {
+    background: rgba(110,181,255,0.07);
+    border: 1px solid rgba(110,181,255,0.2);
+    border-radius: 6px; padding: 10px 12px; margin-bottom: 8px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .anchor-label { font-size: 12px; color: var(--info); line-height: 1.4; }
+  .anchor-sub { font-family: var(--mono); font-size: 9px; color: var(--muted); margin-top: 2px; }
+
+  /* Drift cards */
+  .drift-card {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 12px; margin-bottom: 8px;
+    transition: border-color 0.2s;
+  }
+  .drift-card.active { border-color: rgba(255,209,102,0.35); }
+  .drift-card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .drift-name { font-size: 12px; font-weight: 500; color: var(--text); }
+  .drift-desc { font-family: var(--mono); font-size: 10px; color: var(--muted); margin-bottom: 8px; line-height: 1.5; }
+
+  /* toggle */
+  .toggle { width: 34px; height: 18px; background: var(--border); border-radius: 9px; position: relative; cursor: pointer; transition: background .2s; flex-shrink: 0; }
+  .toggle::after { content:''; width:12px; height:12px; border-radius:50%; background:#fff; position:absolute; top:3px; left:3px; transition: left .2s; }
+  .toggle.on { background: var(--warn); }
+  .toggle.on::after { left: 19px; }
+
+  /* Manual trigger btn */
+  .trigger-row { display: flex; gap: 6px; flex-wrap: wrap; }
+  .trig-btn {
+    flex: 1; min-width: 0;
+    padding: 5px 8px; border-radius: 5px; font-family: var(--mono); font-size: 10px;
+    cursor: pointer; border: 1px solid var(--border); background: var(--bg);
+    color: var(--muted); transition: all .15s; white-space: nowrap;
+  }
+  .trig-btn:hover { border-color: var(--warn); color: var(--warn); background: rgba(255,209,102,0.06); }
+  .trig-btn.once { border-color: rgba(79,255,176,0.25); color: var(--accent); background: rgba(79,255,176,0.06); }
+  .trig-btn.once:hover { background: rgba(79,255,176,0.12); }
+
+  /* intensity */
+  .slider-wrap { padding: 0 0 4px; }
+  .slider-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+  .slider-head label { font-size: 11px; color: var(--muted); }
+  .slider-val { font-family: var(--mono); font-size: 11px; color: var(--warn); }
+  input[type=range] { width: 100%; accent-color: var(--warn); cursor: pointer; }
+
+  /* quick actions */
+  .qa-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .qa-btn {
+    padding: 7px; border-radius: 5px; font-family: var(--mono); font-size: 10px;
+    cursor: pointer; border: 1px solid var(--border); background: var(--surface2);
+    color: var(--muted); transition: all .15s; text-align: center;
+  }
+  .qa-btn:hover { color: var(--text); border-color: rgba(255,255,255,0.15); }
+  .qa-btn.danger { border-color: rgba(255,69,96,0.25); color: var(--danger); background: rgba(255,69,96,0.05); }
+  .qa-btn.danger:hover { background: rgba(255,69,96,0.1); }
+
+  /* log */
+  .log-panel { background: #080a0f; border: 1px solid var(--border); border-radius: 6px; height: 160px; overflow-y: auto; padding: 8px; }
+  .log-entry { font-family: var(--mono); font-size: 10px; padding: 2px 4px; border-radius: 2px; line-height: 1.7; }
+  .log-entry.info { color: #4a5273; }
+  .log-entry.warn { color: var(--warn); }
+  .log-entry.error { color: var(--danger); }
+  .log-entry.ok { color: var(--accent); }
+  .log-entry.anchor { color: var(--info); }
+  .clear-btn { font-family: var(--mono); font-size: 10px; color: var(--muted); background: none; border: none; cursor: pointer; padding: 4px 0 0; display: block; }
+  .clear-btn:hover { color: var(--text); }
+
+  /* MAIN */
+  .main { overflow-y: auto; padding: 28px 32px; background: var(--bg); }
+  .page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 24px; }
+  .page-title { font-family: var(--display); font-weight: 700; font-size: 22px; letter-spacing: -0.5px; margin-bottom: 4px; }
+  .page-sub { font-size: 12px; color: var(--muted); font-family: var(--mono); }
+
+  /* Stats */
+  .stats-bar { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; margin-bottom: 24px; }
+  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px 18px; }
+  .stat-num { font-family: var(--display); font-size: 26px; font-weight: 700; line-height: 1; margin-bottom: 4px; }
+  .stat-label { font-size: 11px; color: var(--muted); }
+  .stat-card.ok .stat-num { color: var(--accent); }
+  .stat-card.warn .stat-num { color: var(--warn); }
+  .stat-card.err .stat-num { color: var(--danger); }
+  .stat-card.neu .stat-num { color: #8899dd; }
+
+  /* Table */
+  .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin-bottom: 20px; }
+  .table-header { padding: 14px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+  .table-title { font-family: var(--display); font-weight: 600; font-size: 14px; }
+  .count-badge { font-family: var(--mono); font-size: 10px; background: var(--surface2); border: 1px solid var(--border); padding: 2px 8px; border-radius: 10px; color: var(--muted); }
+  table { width: 100%; border-collapse: collapse; }
+  th { font-family: var(--mono); font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); padding: 10px 16px; text-align: left; border-bottom: 1px solid var(--border); background: var(--surface2); }
+  td { padding: 11px 16px; font-size: 13px; border-bottom: 1px solid rgba(37,42,58,0.5); vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(255,255,255,0.018); }
+  .invoice-id { font-family: var(--mono); font-size: 12px; color: var(--accent); }
+  .amount { font-family: var(--mono); }
+  .status-chip { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 500; font-family: var(--mono); }
+  .status-chip::before { content:''; width:5px; height:5px; border-radius:50%; }
+  .chip-pending { background: rgba(255,209,102,0.1); color: var(--warn); border: 1px solid rgba(255,209,102,0.2); }
+  .chip-pending::before { background: var(--warn); }
+  .chip-ok { background: rgba(79,255,176,0.08); color: var(--accent); border: 1px solid rgba(79,255,176,0.2); }
+  .chip-ok::before { background: var(--accent); }
+  .chip-err { background: rgba(255,69,96,0.08); color: var(--danger); border: 1px solid rgba(255,69,96,0.2); }
+  .chip-err::before { background: var(--danger); }
+
+  /* Form */
+  .form-panel { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .form-hdr { background: var(--surface2); padding: 14px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+  .form-hdr-title { font-family: var(--display); font-weight: 600; font-size: 14px; }
+  .form-body { padding: 20px; }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 16px; }
+  .form-group { display: flex; flex-direction: column; gap: 5px; }
+  .form-group.full { grid-column: 1/-1; }
+  .form-label { font-family: var(--mono); font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); }
+  .req { color: var(--danger); }
+  .form-input { background: var(--bg); border: 1px solid var(--border); border-radius: 5px; padding: 9px 12px; color: var(--text); font-family: var(--body); font-size: 13px; transition: border-color .15s; outline: none; }
+  .form-input:focus { border-color: rgba(79,255,176,0.35); }
+  select.form-input { cursor: pointer; }
+
+  /* SUBMIT BUTTON — drift target */
+  .submit-wrap { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  #submit-btn {
+    padding: 10px 26px; border-radius: 6px; font-family: var(--mono); font-size: 13px; font-weight: 600;
+    cursor: pointer; border: 1px solid rgba(79,255,176,0.4); background: rgba(79,255,176,0.12);
+    color: var(--accent); transition: all .2s; letter-spacing: .5px;
+  }
+  #submit-btn:hover:not(:disabled) { background: rgba(79,255,176,0.22); }
+  #submit-btn:disabled { opacity: .35; cursor: not-allowed; }
+  #submit-status { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+
+  /* anchor state indicator */
+  .anchor-indicator {
+    font-family: var(--mono); font-size: 10px;
+    padding: 3px 8px; border-radius: 3px; margin-top: 8px; display: inline-block;
+  }
+  .anchor-indicator.good { background: rgba(110,181,255,0.1); color: var(--info); border: 1px solid rgba(110,181,255,0.2); }
+  .anchor-indicator.bad { background: rgba(255,69,96,0.08); color: var(--danger); border: 1px solid rgba(255,69,96,0.18); }
+
+  /* Info boxes */
+  .info-box { border-radius: 6px; padding: 10px 14px; font-size: 12px; font-family: var(--mono); line-height: 1.6; margin-bottom: 14px; }
+  .info-box.blue { background: rgba(110,181,255,0.07); border: 1px solid rgba(110,181,255,0.2); color: var(--info); }
+  .info-box.accent { background: rgba(79,255,176,0.05); border: 1px solid rgba(79,255,176,0.18); color: var(--accent); }
+
+  /* action buttons */
+  .action-btn { padding: 5px 12px; border-radius: 5px; font-size: 12px; font-family: var(--mono); cursor: pointer; border: 1px solid transparent; transition: all .15s; font-weight: 500; }
+  .btn-primary { background: rgba(79,255,176,0.1); border-color: rgba(79,255,176,0.3); color: var(--accent); }
+  .btn-primary:hover { background: rgba(79,255,176,0.2); }
+  .btn-ghost { background: none; border-color: var(--border); color: var(--muted); }
+
+  /* Overlay */
+  .overlay { position: fixed; inset: 0; background: rgba(8,10,15,0.88); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 100; opacity: 0; pointer-events: none; transition: opacity .3s; }
+  .overlay.active { opacity: 1; pointer-events: all; }
+  .spinner { width: 40px; height: 40px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .overlay-inner { text-align: center; }
+  .overlay-text { font-family: var(--mono); font-size: 12px; color: var(--muted); margin-top: 16px; }
+
+  /* Modals */
+  .modal-bd { position: fixed; inset: 0; background: rgba(8,10,15,0.9); z-index: 200; display: none; align-items: center; justify-content: center; }
+  .modal-bd.show { display: flex; }
+  .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 28px; width: 360px; text-align: center; }
+  .modal-icon { font-size: 32px; margin-bottom: 12px; }
+  .modal-title { font-family: var(--display); font-weight: 700; font-size: 18px; margin-bottom: 8px; }
+  .modal-body { font-size: 13px; color: var(--muted); line-height: 1.7; margin-bottom: 20px; }
+  .modal-actions { display: flex; gap: 8px; }
+  .modal-btn { flex: 1; padding: 10px; border-radius: 6px; font-family: var(--mono); font-size: 12px; cursor: pointer; border: 1px solid var(--border); background: var(--surface2); color: var(--text); transition: all .15s; }
+  .modal-btn:hover { border-color: rgba(255,255,255,.15); color: #fff; }
+  .modal-btn.primary { background: rgba(79,255,176,0.1); border-color: rgba(79,255,176,0.3); color: var(--accent); }
+  .modal-btn.warn { background: rgba(255,209,102,0.1); border-color: rgba(255,209,102,0.3); color: var(--warn); }
+
+  /* Notifs */
+  .notif-wrap { position: fixed; bottom: 24px; right: 24px; z-index: 300; display: flex; flex-direction: column; gap: 8px; }
+  .notif { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px; font-size: 12px; font-family: var(--mono); max-width: 280px; animation: slideIn .3s ease; box-shadow: 0 4px 24px rgba(0,0,0,.4); }
+  .notif.ok { border-color: rgba(79,255,176,.3); color: var(--accent); }
+  .notif.err { border-color: rgba(255,69,96,.3); color: var(--danger); }
+  .notif.warn { border-color: rgba(255,209,102,.3); color: var(--warn); }
+  .notif.info { border-color: rgba(110,181,255,.3); color: var(--info); }
+  @keyframes slideIn { from { transform: translateX(40px); opacity: 0; } }
+  @keyframes slideDown { from { transform: translateX(-50%) translateY(-20px); opacity: 0; } to { transform: translateX(-50%) translateY(0); opacity: 1; } }
+
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="logo">Tarık'ın <span>Invoice Playground</span></div>
+    <div class="badge mvp">MVP · 4 DRIFT</div>
+    <div class="topbar-right">
+      <div class="top-pill">
+        <div class="dot"></div>
+        BATCH <strong id="tb-batch">B-001</strong>
+      </div>
+      <div class="top-pill green">
+        RUN <strong id="tb-run">#001</strong>
+      </div>
+      <div class="top-pill yellow" id="anchor-pill" title="Stable anchor data-qa='submit' durumu">
+        ANCHOR <strong id="tb-anchor">ON</strong>
+      </div>
+    </div>
+  </div>
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+
+    <!-- Anchor Mode -->
+    <div class="sb-section">
+      <span class="sb-label">Stable Anchor Mode</span>
+      <div class="anchor-banner">
+        <div>
+          <div class="anchor-label">data-qa="submit" aktif</div>
+          <div class="anchor-sub">UiPath robust selector için stabil referans</div>
+        </div>
+        <div class="toggle on" id="tog-anchor" onclick="toggleAnchor()"></div>
+      </div>
+      <div style="font-family:var(--mono);font-size:10px;color:var(--muted);line-height:1.6;padding:0 2px;">
+        <strong style="color:var(--info)">ON</strong> → data-qa değişmez, bot bunu yakalar<br>
+        <strong style="color:var(--danger)">OFF</strong> → tek dayanak noktası da kayar
+      </div>
+    </div>
+
+    <!-- Drift 1: Random ID -->
+    <div class="sb-section">
+      <span class="sb-label">Drift 1 — Selector</span>
+      <div class="drift-card" id="card-id">
+        <div class="drift-card-top">
+          <div class="drift-name">🎲 Selector Attributes Drift</div>
+          <div class="toggle" id="tog-id" onclick="toggleDrift('randomId')"></div>
+        </div>
+        <div class="drift-desc">
+          name, aria-label, data-form her 3sn'de değişir.<br>
+          <span style="color:var(--info)">data-qa="submit"</span> anchor ON ise <strong style="color:var(--accent)">sabit kalır</strong>.<br>
+          Anchor OFF ise data-qa da kayar — tam kırılma.
+        </div>
+        <div class="trigger-row">
+          <button class="trig-btn once" onclick="manualIdDrift()">⚡ Şimdi Tetikle</button>
+          <button class="trig-btn" onclick="logCurrentId()">🔍 Attrs Göster</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Drift 2: Overlay -->
+    <div class="sb-section">
+      <span class="sb-label">Drift 2 — Sync / Wait</span>
+      <div class="drift-card" id="card-overlay">
+        <div class="drift-card-top">
+          <div class="drift-name">⏳ Loading Overlay</div>
+          <div class="toggle" id="tog-overlay" onclick="toggleDrift('overlay')"></div>
+        </div>
+        <div class="drift-desc">
+          Rastgele aralıklarla tam ekranı kapatır.<br>
+          Bot click yaparken overlay önüne çıkabilir.
+        </div>
+        <div class="trigger-row">
+          <button class="trig-btn once" onclick="trigOverlay(2000)">⚡ 2sn Overlay</button>
+          <button class="trig-btn once" onclick="trigOverlay(5000)">⚡ 5sn Overlay</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Drift 3: Pop-up -->
+    <div class="sb-section">
+      <span class="sb-label">Drift 3 — State / Pop-up</span>
+      <div class="drift-card" id="card-popup">
+        <div class="drift-card-top">
+          <div class="drift-name">💬 Unexpected Pop-up</div>
+          <div class="toggle" id="tog-popup" onclick="toggleDrift('popup')"></div>
+        </div>
+        <div class="drift-desc">
+          İşlem sırasında beklenmedik modal çıkar.<br>
+          Bot "kabul et"e basmazsa devam edemez.
+        </div>
+        <div class="trigger-row">
+          <button class="trig-btn once" onclick="trigPopup(0)">⚡ Sistem Uyarısı</button>
+          <button class="trig-btn once" onclick="trigPopup(1)">⚡ Güvenlik Check</button>
+          <button class="trig-btn once" onclick="trigPopup(2)">⚡ Bağlantı Pop-up</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Drift 4: Validation + Category -->
+    <div class="sb-section">
+      <span class="sb-label">Drift 4 — Business Rule</span>
+      <div class="drift-card" id="card-validation">
+        <div class="drift-card-top">
+          <div class="drift-name">📋 Validation + Category</div>
+          <div class="toggle" id="tog-validation" onclick="toggleDrift('validation')"></div>
+        </div>
+        <div class="drift-desc">
+          Zorunlu alanlar değişir. Kategori seçenekleri<br>de shuffle olur — bot sabit option bulamaz.
+        </div>
+        <div class="trigger-row">
+          <button class="trig-btn once" onclick="manualValidationShift()">⚡ Kural Değiştir</button>
+          <button class="trig-btn once" onclick="shuffleCategories()">⚡ Kategori Shuffle</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Drift 5: Button Order Swap -->
+    <div class="sb-section">
+      <span class="sb-label">Drift 5 — DOM Order / Ambiguity</span>
+      <div class="drift-card" id="card-swap">
+        <div class="drift-card-top">
+          <div class="drift-name">🔀 Button Order Swap</div>
+          <div class="toggle" id="tog-swap" onclick="toggleDrift('swap')"></div>
+        </div>
+        <div class="drift-desc">
+          PRIMARY ve DECOY her 3sn'de yer değiştirir.<br>
+          <span style="color:var(--danger)">aaname='Fatura Kaydet'</span> → DOM'daki ilki seçer → yanlış buton.<br>
+          <span style="color:var(--accent)">data-qa='submit'</span> → sıra değişse de doğruyu bulur.
+        </div>
+        <div class="trigger-row">
+          <button class="trig-btn once" onclick="swapButtons()">⚡ Şimdi Swap Et</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Intensity -->
+    <div class="sb-section">
+      <span class="sb-label" style="padding-top:0">Auto Tetiklenme Sıklığı</span>
+      <div class="slider-wrap">
+        <div class="slider-head">
+          <label>Aktif drift'lerin frekansı</label>
+          <span class="slider-val" id="intensity-val">%35</span>
+        </div>
+        <input type="range" min="10" max="85" value="35" id="intensity-slider" oninput="intensity=+this.value; document.getElementById('intensity-val').textContent='%'+intensity">
+      </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="sb-section">
+      <span class="sb-label" style="padding-top:0">Quick Actions</span>
+      <div class="qa-grid">
+        <button class="qa-btn" onclick="activateAll()">⚡ Tümünü Aç</button>
+        <button class="qa-btn" onclick="deactivateAll()">↺ Tümünü Kapat</button>
+        <button class="qa-btn" onclick="loadNewBatch()">📦 Yeni Batch</button>
+        <button class="qa-btn danger" onclick="trigSessionExpired()">⏱ Session Expire</button>
+      </div>
+    </div>
+
+    <!-- Log -->
+    <div class="sb-section">
+      <span class="sb-label" style="padding-top:0">Bot Event Log</span>
+      <div class="log-panel" id="log-panel"></div>
+      <button class="clear-btn" onclick="clearLog()">↓ clear log</button>
+    </div>
+
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Fatura Giriş Portalı</div>
+        <div class="page-sub">ERP_SYS_v2.4.1 · Batch Mode · UiPath Drift Lab</div>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="action-btn btn-primary" onclick="loadNewBatch()">+ Yeni Batch</button>
+        <button class="action-btn btn-ghost" onclick="exportReport()">↓ Rapor</button>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-bar">
+      <div class="stat-card ok"><div class="stat-num" id="st-processed">847</div><div class="stat-label">İşlendi</div></div>
+      <div class="stat-card warn"><div class="stat-num" id="st-pending">53</div><div class="stat-label">Bekliyor</div></div>
+      <div class="stat-card err"><div class="stat-num" id="st-rejected">12</div><div class="stat-label">Reddedildi</div></div>
+      <div class="stat-card neu"><div class="stat-num" id="st-total">912</div><div class="stat-label">Toplam</div></div>
+    </div>
+
+    <!-- Table -->
+    <div class="table-wrap">
+      <div class="table-header">
+        <div class="table-title">Bekleyen Faturalar</div>
+        <div class="count-badge" id="tbl-count">5 kayıt</div>
+        <div style="margin-left:auto;font-family:var(--mono);font-size:10px;color:var(--muted)">
+          Batch: <span id="batch-lbl" style="color:var(--warn)">B-001</span>
+        </div>
+      </div>
+      <table><thead><tr>
+        <th>FATURA NO</th><th>TEDARİKÇİ</th><th>TUTAR</th><th>SON ÖDEME</th><th>DURUM</th><th>İŞLEM</th>
+      </tr></thead>
+      <tbody id="tbl-body"></tbody></table>
+    </div>
+
+    <!-- Form -->
+    <div class="form-panel">
+      <div class="form-hdr">
+        <span style="font-family:var(--mono);font-size:12px;color:var(--accent)">▶</span>
+        <div class="form-hdr-title">Yeni Fatura Girişi</div>
+        <div style="margin-left:auto;display:flex;align-items:center;gap:8px;">
+          <div class="count-badge" id="form-run-id">RUN #001</div>
+          <div class="anchor-indicator good" id="anchor-ind">data-qa: STABLE</div>
+        </div>
+      </div>
+      <div class="form-body">
+        <div class="info-box blue" id="form-hint">
+          🤖 Drift davranışları aktifken bot bu formu doldurup submit etmeye çalışır. Sol panelden her drift'i ayrı ayrı test edin.
+        </div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label" for="f-inv">Fatura No <span class="req">*</span></label>
+            <input class="form-input" id="f-inv" type="text" placeholder="INV-2024-XXXX" autocomplete="off">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="f-vendor">Tedarikçi Kodu <span class="req">*</span></label>
+            <input class="form-input" id="f-vendor" type="text" placeholder="VND-XXXX" autocomplete="off">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="f-amount">Tutar (TL) <span class="req">*</span></label>
+            <input class="form-input" id="f-amount" type="text" placeholder="0,00" autocomplete="off">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="f-date">Fatura Tarihi <span class="req">*</span></label>
+            <input class="form-input" id="f-date" type="date">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="f-cat">Kategori <span id="cat-req" class="req">*</span></label>
+            <select class="form-input" id="f-cat">
+              <option value="">-- Seçin --</option>
+              <option value="OPEX">OPEX</option>
+              <option value="CAPEX">CAPEX</option>
+              <option value="SERVICES">Services</option>
+              <option value="MATERIALS">Materials</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="f-cc">Maliyet Merkezi <span id="cc-req"></span></label>
+            <input class="form-input" id="f-cc" type="text" placeholder="CC-XXXX" autocomplete="off">
+          </div>
+          <div class="form-group full">
+            <label class="form-label" for="f-desc">Açıklama</label>
+            <input class="form-input" id="f-desc" type="text" placeholder="İşlem açıklaması..." autocomplete="off">
+          </div>
+        </div>
+
+        <!-- İKİ AYRI PANEL — scope/anchor demo için -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:4px;">
+
+          <!-- PANEL A: ERP Gönderim Paneli — stabil kimlik data-qa="panel-erp" -->
+          <div id="panel-erp"
+               data-qa="panel-erp"
+               data-label="ERP Gönderim Paneli"
+               style="background:rgba(79,255,176,0.04);border:1px solid rgba(79,255,176,0.2);border-radius:8px;padding:12px 14px;">
+            <div style="font-family:var(--mono);font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--accent);margin-bottom:8px;">
+              ERP Gönderim Paneli
+            </div>
+            <!-- Primary button buraya mount edilecek -->
+          </div>
+
+          <!-- PANEL B: Taslak Paneli — stabil kimlik data-qa="panel-draft" -->
+          <div id="panel-draft"
+               data-qa="panel-draft"
+               data-label="Taslak Paneli"
+               style="background:rgba(255,69,96,0.03);border:1px solid rgba(255,69,96,0.15);border-radius:8px;padding:12px 14px;">
+            <div style="font-family:var(--mono);font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--danger);margin-bottom:8px;">
+              Taslak Paneli
+            </div>
+            <!-- Decoy button buraya mount edilecek -->
+          </div>
+
+        </div>
+
+        <!-- Butonlar JS ile panellere mount edilir (swap olsa bile panel kimliği sabit) -->
+        <div id="submit-wrap" style="display:none;">
+          <button
+            data-js="submitBtn"
+            id="btn-primary-dyn"
+            data-qa="submit"
+            name="btn_submit_invoice"
+            aria-label="Fatura Kaydet"
+            onclick="submitForm('primary')"
+            style="width:100%;padding:10px 26px;border-radius:6px;font-family:var(--mono);font-size:13px;font-weight:600;cursor:pointer;border:1px solid rgba(79,255,176,0.4);background:rgba(79,255,176,0.12);color:var(--accent);transition:all .2s;letter-spacing:.5px;">
+            Fatura Kaydet
+          </button>
+          <button
+            data-js="draftBtn"
+            id="btn-draft-dyn"
+            data-qa="save-draft"
+            name="btn_save_draft"
+            aria-label="Fatura Kaydet"
+            onclick="submitForm('draft')"
+            style="width:100%;padding:10px 26px;border-radius:6px;font-family:var(--mono);font-size:13px;font-weight:600;cursor:pointer;border:1px solid rgba(255,69,96,0.35);background:rgba(255,69,96,0.08);color:var(--danger);transition:all .2s;letter-spacing:.5px;">
+            Fatura Kaydet
+          </button>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+          <span id="submit-status" style="font-family:var(--mono);font-size:11px;color:var(--muted);"></span>
+        </div>
+
+        <!-- Selector cheat-sheet — video için referans -->
+        <div style="margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <div style="background:rgba(79,255,176,0.05);border:1px solid rgba(79,255,176,0.15);border-radius:6px;padding:10px 12px;font-family:var(--mono);font-size:10px;line-height:1.8;">
+            <div style="color:var(--accent);font-weight:600;margin-bottom:4px;">✓ PRIMARY BUTTON</div>
+            <div style="color:var(--muted)">id: <span id="cur-primary-id" style="color:var(--warn)">btn-primary-dyn</span></div>
+            <div style="color:var(--muted)">name: <span id="cur-primary-name" style="color:var(--warn)">btn_submit_invoice</span></div>
+            <div style="color:var(--muted)">data-qa: <span id="cur-primary-qa" style="color:var(--accent)">submit ✓</span></div>
+            <div style="color:var(--muted)">aria-label: <span style="color:var(--info)">Fatura Kaydet (sabit)</span></div>
+          </div>
+          <div style="background:rgba(255,69,96,0.06);border:1px solid rgba(255,69,96,0.2);border-radius:6px;padding:10px 12px;font-family:var(--mono);font-size:10px;line-height:1.8;">
+            <div style="color:var(--danger);font-weight:600;margin-bottom:4px;">⚠ DECOY BUTTON</div>
+            <div style="color:var(--muted)">id: <span id="cur-draft-id" style="color:var(--warn)">btn-draft-dyn</span></div>
+            <div style="color:var(--muted)">name: <span id="cur-draft-name" style="color:var(--warn)">btn_save_draft</span></div>
+            <div style="color:var(--muted)">data-qa: <span style="color:var(--danger)">save-draft ✗</span></div>
+            <div style="color:var(--muted)">aria-label: <span style="color:var(--warn)">Fatura Kaydet (AYNI!)</span></div>
+            <div style="color:var(--danger);font-size:9px;margin-top:3px;">▲ aaname ambiguous — ERP'ye GİTMEZ</div>
+          </div>
+        </div>
+
+        <div style="margin-top:10px">
+          <div class="info-box accent" style="margin-bottom:8px;font-size:11px;">
+            Aktif drift: <span id="active-drifts" style="font-weight:600">yok</span>
+            &nbsp;·&nbsp;
+            <span id="anchor-state-txt" style="color:var(--info)">data-qa: STABLE</span>
+          </div>
+          <!-- UiPath Selector Rehberi — video için referans -->
+          <div style="background:rgba(8,10,15,0.8);border:1px solid var(--border);border-radius:6px;padding:12px 14px;font-family:var(--mono);font-size:10px;line-height:2;">
+            <div style="color:var(--muted);margin-bottom:6px;letter-spacing:1px;text-transform:uppercase;font-size:9px;">UiPath Selector Rehberi</div>
+            <div style="color:var(--danger);">✗ Kırılgan (id drift edince patlıyor):</div>
+            <div style="color:#4a5273;padding-left:12px;">&lt;webctrl id='btn-primary-dyn' tag='BUTTON' /&gt;</div>
+            <div style="color:var(--accent);margin-top:4px;">✓ Stabil (data-qa anchor, id değişse de bulur):</div>
+            <div style="color:var(--info);padding-left:12px;">&lt;webctrl tag='BUTTON' data-qa='submit' /&gt;</div>
+            <div style="color:var(--warn);margin-top:6px;font-size:9px;">⚠ Healing Agent → Disabled | Targeting → Selector only</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Overlay -->
+<div class="overlay" id="overlay">
+  <div class="overlay-inner">
+    <div class="spinner"></div>
+    <div class="overlay-text" id="overlay-txt">ERP bağlantısı bekleniyor...<br><small>Lütfen bekleyin</small></div>
+  </div>
+</div>
+
+<!-- Session Expired -->
+<div class="modal-bd" id="session-modal">
+  <div class="modal">
+    <div class="modal-icon">⏱</div>
+    <div class="modal-title" style="color:var(--warn)">Session Expired</div>
+    <div class="modal-body">Oturumunuz zaman aşımına uğradı. Devam etmek için tekrar giriş yapmanız gerekiyor.</div>
+    <div class="modal-actions">
+      <button class="modal-btn warn" onclick="sessionRelogin()">↺ Yeniden Giriş Yap</button>
+    </div>
+  </div>
+</div>
+
+<!-- Pop-up -->
+<div class="modal-bd" id="popup-modal">
+  <div class="modal">
+    <div class="modal-icon" id="pop-icon">⚠️</div>
+    <div class="modal-title" id="pop-title" style="color:var(--warn)">Sistem Uyarısı</div>
+    <div class="modal-body" id="pop-body">İşleme devam etmek istiyor musunuz?</div>
+    <div class="modal-actions">
+      <button class="modal-btn primary" id="pop-ok" onclick="closePopup('ok')">✓ Evet, Devam Et</button>
+      <button class="modal-btn" onclick="closePopup('cancel')">İptal</button>
+    </div>
+  </div>
+</div>
+
+<!-- Notifs -->
+<div class="notif-wrap" id="notif-wrap"></div>
+
+<script>
+// ─── BATCH DATA ───────────────────────────────────────────
+const batchPool = [
+  [
+    { id:'INV-2024-4401', vendor:'ACME Corp',            amount:'12.450,00', due:'2024-12-28', status:'pending' },
+    { id:'INV-2024-4402', vendor:'Tech Solutions A.Ş.',  amount:'8.200,00',  due:'2024-12-30', status:'pending' },
+    { id:'INV-2024-4403', vendor:'Global Supplies Ltd.', amount:'34.100,00', due:'2024-12-25', status:'error'   },
+    { id:'INV-2024-4404', vendor:'Ankara Lojistik',      amount:'5.800,00',  due:'2025-01-05', status:'pending' },
+    { id:'INV-2024-4405', vendor:'İzmir Tekstil',        amount:'19.300,00', due:'2024-12-29', status:'pending' }
+  ],
+  [
+    { id:'INV-2024-4501', vendor:'Boğaziçi Yazılım',    amount:'6.750,00',  due:'2025-01-10', status:'pending' },
+    { id:'INV-2024-4502', vendor:'Delta Makina Ltd.',    amount:'22.300,00', due:'2025-01-08', status:'pending' },
+    { id:'INV-2024-4503', vendor:'EuroTech GmbH',        amount:'48.900,00', due:'2024-12-31', status:'pending' },
+    { id:'INV-2024-4504', vendor:'Mavi Kargo A.Ş.',     amount:'3.200,00',  due:'2025-01-12', status:'error'   },
+    { id:'INV-2024-4505', vendor:'Piramit Danışmanlık',  amount:'15.500,00', due:'2025-01-03', status:'pending' }
+  ],
+  [
+    { id:'INV-2024-4601', vendor:'Atlas Sigorta',        amount:'7.100,00',  due:'2025-01-15', status:'pending' },
+    { id:'INV-2024-4602', vendor:'Renk Boya San.',       amount:'31.250,00', due:'2025-01-14', status:'pending' },
+    { id:'INV-2024-4603', vendor:'Nordic Systems AS',    amount:'62.400,00', due:'2025-01-06', status:'error'   },
+    { id:'INV-2024-4604', vendor:'Vatan Bilgisayar',     amount:'4.440,00',  due:'2025-01-18', status:'pending' }
+  ],
+  // B-004: Data Drift Batch — kasıtlı bozuk satırlar
+  [
+    { id:'INV-2024-4701', vendor:'',               amount:'9.000,00',  due:'2025-01-20', status:'error'  },
+    { id:'INV-2024-4702', vendor:'Keystone Ltd.',  amount:'',          due:'2025-01-19', status:'error'  },
+    { id:'INV-2024-4703', vendor:'Apex Yazılım',   amount:'18.700,00', due:'',           status:'error'  },
+    { id:'INV-2024-4704', vendor:'Zirve Lojistik', amount:'5.300,00',  due:'2025-01-22', status:'pending'},
+    { id:'INV-2024-4705', vendor:'Orion Medya',    amount:'11.200,00', due:'2025-01-21', status:'pending'}
+  ]
+];
+
+const categoryPool = [
+  // set A (normal)
+  ['OPEX','CAPEX','SERVICES','MATERIALS'],
+  // set B (farklı isimler — bot sabit option bulamaz)
+  ['Operational','Capital Expense','Professional Services','Raw Materials'],
+  // set C (karma)
+  ['OpEx','CapEx','SVC','MAT','OTHER'],
+  // set D (Türkçe)
+  ['Operasyonel','Sermaye','Hizmetler','Hammadde']
+];
+
+const popups = [
+  { icon:'⚠️', title:'Sistem Uyarısı',    body:'Bağlantı gecikmesi tespit edildi. İşleme devam etmek istiyor musunuz?',         okLabel:'Devam Et' },
+  { icon:'🔒', title:'Güvenlik Kontrolü', body:'Otomatik erişim tespit edildi. İşlemi onaylamak için tıklayın.',                  okLabel:'Onayla'   },
+  { icon:'⚡', title:'Yüksek Sistem Yükü',body:'Sunucular meşgul. Şu anda devam edilsin mi?',                                     okLabel:'Evet'     },
+  { icon:'📋', title:'Politika Güncellemesi', body:'Gizlilik politikası güncellendi. Kullanmaya devam etmek için kabul edin.',    okLabel:'Kabul Et' },
+  { icon:'🔄', title:'Oturum Yenileniyor',body:'Güvenlik nedeniyle oturumunuz kısa süre içinde yenilenecek. Hazır mısınız?',      okLabel:'Hazırım'  }
+];
+
+const overlayMsgs = [
+  'ERP bağlantısı kuruluyor...',
+  'Sunucu yanıtı bekleniyor...',
+  'Veri doğrulanıyor...',
+  'Oturum kontrol ediliyor...',
+  'Yetki doğrulaması yapılıyor...'
+];
+
+// ─── STATE ────────────────────────────────────────────────
+const drifts = { randomId: false, overlay: false, popup: false, validation: false, swap: false };
+let anchorMode   = true;
+let intensity    = 35;
+let currentBatch = 0;
+let runCounter   = 1;
+let processed    = 847, pending = 53, rejected = 12;
+let invoices     = [...batchPool[0]];
+let currentCatSet = 0;
+
+// button attributes we'll drift
+let btnId        = 'btn_submit_invoice';
+let btnName      = 'btn_submit_invoice';
+let btnAriaLabel = 'Fatura Kaydet';
+
+// ─── RENDER ───────────────────────────────────────────────
+function renderTable() {
+  const tbody = document.getElementById('tbl-body');
+  tbody.innerHTML = invoices.map(inv => `
+    <tr>
+      <td><span class="invoice-id">${inv.id}</span></td>
+      <td style="${!inv.vendor?'color:var(--danger)':''}">
+        ${inv.vendor || '<span style="font-family:var(--mono);font-size:11px">⚠ Tedarikçi Boş</span>'}
+      </td>
+      <td class="amount">
+        ${inv.amount ? '₺ '+inv.amount : '<span style="color:var(--danger);font-family:var(--mono);font-size:11px">⚠ Tutar Yok</span>'}
+      </td>
+      <td style="font-family:var(--mono);font-size:12px;${!inv.due?'color:var(--danger)':''}">
+        ${inv.due || '<span style="font-size:11px">⚠ Tarih Yok</span>'}
+      </td>
+      <td><span class="status-chip ${inv.status==='pending'?'chip-pending':inv.status==='ok'?'chip-ok':'chip-err'}">
+        ${inv.status==='pending'?'Bekliyor':inv.status==='ok'?'İşlendi':'Hata'}
+      </span></td>
+      <td><button class="action-btn btn-primary" onclick="processRow('${inv.id}')">İşle</button></td>
+    </tr>`).join('');
+  document.getElementById('tbl-count').textContent = invoices.length + ' kayıt';
+}
+
+function updateStats() {
+  document.getElementById('st-processed').textContent = processed;
+  document.getElementById('st-pending').textContent   = pending;
+  document.getElementById('st-rejected').textContent  = rejected;
+  document.getElementById('st-total').textContent     = processed + pending + rejected;
+}
+
+function renderCategories() {
+  const sel = document.getElementById('f-cat');
+  const opts = categoryPool[currentCatSet];
+  sel.innerHTML = '<option value="">-- Seçin --</option>' +
+    opts.map(o => `<option value="${o}">${o}</option>`).join('');
+}
+
+// ─── DRIFT DOM MAP (key → actual HTML element ids) ────────
+const driftDom = {
+  randomId:   { tog: 'tog-id',         card: 'card-id'         },
+  overlay:    { tog: 'tog-overlay',    card: 'card-overlay'    },
+  popup:      { tog: 'tog-popup',      card: 'card-popup'      },
+  validation: { tog: 'tog-validation', card: 'card-validation' },
+  swap:       { tog: 'tog-swap',       card: 'card-swap'       }
+};
+
+// ─── DRIFT TOGGLES ───────────────────────────────────────
+function toggleDrift(key) {
+  drifts[key] = !drifts[key];
+  const { tog, card } = driftDom[key];
+  document.getElementById(tog).classList.toggle('on', drifts[key]);
+  document.getElementById(card).classList.toggle('active', drifts[key]);
+  updateDriftStatus();
+  addLog(drifts[key] ? 'warn' : 'info', `${key}: ${drifts[key] ? 'AKTİF' : 'KAPALI'}`);
+}
+
+function activateAll() {
+  Object.keys(drifts).forEach(k => {
+    drifts[k] = true;
+    document.getElementById(driftDom[k].tog).classList.add('on');
+    document.getElementById(driftDom[k].card).classList.add('active');
+  });
+  updateDriftStatus();
+  addLog('warn', 'Tüm drift davranışları aktif edildi');
+  showNotif('warn', '⚡ 4 drift aktif');
+}
+
+function deactivateAll() {
+  Object.keys(drifts).forEach(k => {
+    drifts[k] = false;
+    document.getElementById(driftDom[k].tog).classList.remove('on');
+    document.getElementById(driftDom[k].card).classList.remove('active');
+  });
+  updateDriftStatus();
+  const btn = document.getElementById('submit-btn');
+  btn.style.display = '';
+  btn.style.marginLeft = '';
+  btn.disabled = false;
+  document.getElementById('overlay').classList.remove('active');
+  document.getElementById('popup-modal').classList.remove('show');
+  addLog('info', 'Tüm driftler kapatıldı');
+  showNotif('ok', '✓ Sıfırlandı');
+}
+
+function updateDriftStatus() {
+  const active = Object.entries(drifts).filter(([,v])=>v).map(([k])=>k);
+  document.getElementById('active-drifts').textContent = active.length ? active.join(', ') : 'yok';
+}
+
+// ─── ANCHOR MODE ─────────────────────────────────────────
+function toggleAnchor() {
+  anchorMode = !anchorMode;
+  document.getElementById('tog-anchor').classList.toggle('on', anchorMode);
+  const ind  = document.getElementById('anchor-ind');
+  const tb   = document.getElementById('tb-anchor');
+  const stxt = document.getElementById('anchor-state-txt');
+  const btn  = getPrimary();
+
+  if (anchorMode) {
+    if (btn) btn.setAttribute('data-qa', 'submit');
+    ind.className = 'anchor-indicator good'; ind.textContent = 'data-qa: STABLE';
+    tb.textContent = 'ON'; tb.style.color = 'var(--accent)';
+    if (stxt) { stxt.textContent = 'data-qa: STABLE'; stxt.style.color = 'var(--info)'; }
+    if (document.getElementById('cur-primary-qa'))
+      document.getElementById('cur-primary-qa').textContent = 'submit ✓';
+    addLog('anchor', 'Anchor ON → data-qa="submit" restore edildi, UiPath bunu tutabilir');
+    showNotif('info', '🔵 Anchor: STABLE');
+  } else {
+    const sfx = Math.random().toString(36).substr(2,5);
+    if (btn) btn.setAttribute('data-qa', 'submit_' + sfx);
+    ind.className = 'anchor-indicator bad'; ind.textContent = 'data-qa: DRİFTİNG';
+    tb.textContent = 'OFF'; tb.style.color = 'var(--danger)';
+    if (stxt) { stxt.textContent = 'data-qa: DRİFTİNG ⚠'; stxt.style.color = 'var(--danger)'; }
+    if (document.getElementById('cur-primary-qa'))
+      document.getElementById('cur-primary-qa').textContent = 'submit_' + sfx + ' ⚠';
+    addLog('anchor', 'Anchor OFF → data-qa da drift edecek, hiçbir sabit attribute yok ⚠');
+    showNotif('warn', '⚠ Anchor KAPALI — tam kırılma modu');
+  }
+}
+
+// ─── DRIFT: SELECTOR ATTRIBUTES (id de dahil — JS data-js ile bulur) ──
+// JS butonu id ile değil, data-js="submitBtn" ile bulur.
+// UiPath ise data-qa / name / id / aria-label ile arar.
+// Drift açıkken bunların hepsi kayar → UiPath'in selector'ı kırılır.
+// Anchor ON iken sadece data-qa="submit" sabit kalır → UiPath bunu tutar.
+
+const ariaLabels = ['Fatura Kaydet','Kaydet','Gönder','Submit','Onayla',
+                    'Save','Confirm','Gönder ve Kaydet','İşle','Devam'];
+
+function getPrimary() { return document.querySelector('[data-js="submitBtn"]'); }
+function getDraft()   { return document.querySelector('[data-js="draftBtn"]'); }
+
+function applyIdDrift() {
+  const btn = getPrimary();
+  if (!btn) return;
+
+  const sfx     = Math.random().toString(36).substr(2, 7);
+  const newId   = 'btn_' + sfx;
+  const newName = 'frm_' + sfx;
+
+  // id ve name drift eder — UiPath bunlara dayanırsa kırılır
+  btn.id = newId;
+  btn.setAttribute('name', newName);
+  btn.setAttribute('data-form', 'inv_' + sfx);
+
+  // aria-label ve innerText KASITLI OLARAK SABİT KALIYOR ("Fatura Kaydet")
+  // Çünkü aaname='Fatura Kaydet' selector demo'su için ambiguity şart.
+  // Eğer aria-label da değişseydi aaname hiçbir şeyi bulamazdı.
+
+  // Decoy'un id/name'ini de drift et
+  const draft = getDraft();
+  if (draft) {
+    draft.id = 'btn_draft_' + sfx;
+    draft.setAttribute('name', 'drft_' + sfx);
+  }
+
+  if (!anchorMode) {
+    btn.setAttribute('data-qa', 'submit_' + sfx);
+    addLog('warn', `Drift: id="${newId}" name="${newName}" data-qa=DRIFTED ⚠ | aria-label sabit ✓`);
+  } else {
+    addLog('warn', `Drift: id="${newId}" name="${newName}" | data-qa STABLE ✓ | aria-label sabit ✓`);
+  }
+
+  document.getElementById('cur-primary-id').textContent   = newId;
+  document.getElementById('cur-primary-name').textContent = newName;
+  document.getElementById('cur-primary-qa').textContent   =
+    anchorMode ? 'submit ✓' : 'submit_' + sfx + ' ⚠';
+  document.getElementById('cur-draft-id').textContent     = 'btn_draft_' + sfx;
+  document.getElementById('cur-draft-name').textContent   = 'drft_' + sfx;
+}
+
+// ─── DRIFT: OVERLAY ──────────────────────────────────────
+function trigOverlay(duration) {
+  const msg = overlayMsgs[Math.floor(Math.random()*overlayMsgs.length)];
+  document.getElementById('overlay-txt').innerHTML = msg + '<br><small style="color:var(--muted)">Lütfen bekleyin...</small>';
+  document.getElementById('overlay').classList.add('active');
+  addLog('warn', `Overlay açıldı (~${duration/1000}s): "${msg}"`);
+  setTimeout(() => {
+    document.getElementById('overlay').classList.remove('active');
+    addLog('info', 'Overlay kapandı');
+  }, duration);
+}
+
+// ─── DRIFT: POP-UP ───────────────────────────────────────
+function setButtonsBlocked(blocked) {
+  const primary = getPrimary();
+  const draft   = getDraft();
+  if (primary) primary.disabled = blocked;
+  if (draft)   draft.disabled   = blocked;
+}
+
+function trigPopup(idx) {
+  const p = popups[idx !== undefined ? idx : Math.floor(Math.random()*popups.length)];
+  document.getElementById('pop-icon').textContent  = p.icon;
+  document.getElementById('pop-title').textContent = p.title;
+  document.getElementById('pop-body').textContent  = p.body;
+  document.getElementById('pop-ok').textContent    = '✓ ' + p.okLabel;
+  document.getElementById('popup-modal').classList.add('show');
+  setButtonsBlocked(true);  // ← butonları disabled yap
+  addLog('warn', `Pop-up: "${p.title}" — butonlar disabled edildi`);
+}
+
+function closePopup(action) {
+  document.getElementById('popup-modal').classList.remove('show');
+  setButtonsBlocked(false); // ← butonları tekrar enable et
+  addLog('info', `Pop-up kapatıldı: "${action}" — butonlar tekrar aktif`);
+  if (action === 'ok') showNotif('ok', '✓ Pop-up kabul edildi');
+  else showNotif('warn', '↩ Pop-up iptal edildi');
+}
+
+// ─── DRIFT: VALIDATION + CATEGORY ───────────────────────
+function manualValidationShift() {
+  const makeCC = Math.random() > 0.5;
+  const ccReq  = document.getElementById('cc-req');
+  const ccInput = document.getElementById('f-cc');
+  if (makeCC) {
+    ccReq.textContent = '*'; ccReq.className = 'req';
+    ccInput.placeholder = 'CC-XXXX (ZORUNLU)';
+    addLog('warn', 'Validation shift: "Maliyet Merkezi" artık ZORUNLU');
+    showNotif('warn', '⚠ Kural değişti: CC zorunlu');
+  } else {
+    ccReq.textContent = ''; ccInput.placeholder = 'CC-XXXX (opsiyonel)';
+    addLog('info', 'Validation shift: "Maliyet Merkezi" opsiyonel');
+    showNotif('info', 'ℹ Kural değişti: CC opsiyonel');
+  }
+}
+
+function shuffleCategories() {
+  currentCatSet = (currentCatSet + 1) % categoryPool.length;
+  renderCategories();
+  const setNames = ['Standart EN','Uzun İsimler','Kısa Kodlar','Türkçe'];
+  addLog('warn', `Kategori seti değişti → ${setNames[currentCatSet]}: [${categoryPool[currentCatSet].join(', ')}]`);
+  showNotif('warn', `⚡ Kategori: "${setNames[currentCatSet]}"`);
+}
+
+function manualIdDrift() { applyIdDrift(); showNotif('warn', '⚡ Selector attributes drifted'); }
+function logCurrentId() {
+  const btn = getPrimary();
+  if (!btn) { addLog('error', 'Primary buton bulunamadı!'); return; }
+  const attrs = ['id','name','aria-label','data-qa','data-form']
+    .map(a => `${a}="${btn.getAttribute(a) ?? '—'}"`).join(' | ');
+  addLog('info', `PRIMARY → ${attrs}`);
+  showNotif('info', '🔍 Attributes loglandı');
+}
+
+// ─── PANEL MOUNT — butonları panellere yerleştir ─────────
+// Normal durum: Primary → panel-erp, Decoy → panel-draft
+// Swap durumu: yer değiştirirler AMA panel kimlikleri (data-qa) sabit kalır.
+// UiPath "panel-erp içindeki BUTTON" diye scope/anchor kurarsa swap'ten etkilenmez.
+
+function mountButtons(primaryFirst = true) {
+  const panelErp   = document.getElementById('panel-erp');
+  const panelDraft = document.getElementById('panel-draft');
+  const primary    = getPrimary();
+  const draft      = getDraft();
+  if (!panelErp || !panelDraft || !primary || !draft) return;
+
+  // Panellerdeki eski butonları temizle (header label'ı koru)
+  [...panelErp.querySelectorAll('button')].forEach(b => b.remove());
+  [...panelDraft.querySelectorAll('button')].forEach(b => b.remove());
+
+  if (primaryFirst) {
+    panelErp.appendChild(primary);
+    panelDraft.appendChild(draft);
+  } else {
+    // SWAP: decoy ERP panelinde, primary taslak panelinde görünür
+    panelErp.appendChild(draft);
+    panelDraft.appendChild(primary);
+  }
+}
+// submit-wrap içindeki iki butonu DOM sırası olarak swap eder.
+let swapState = false;
+
+function swapButtons() {
+  swapState = !swapState;
+  mountButtons(!swapState);
+
+  if (swapState) {
+    addLog('warn', 'Swap: DECOY panel-erp\'de görünüyor → aaname/text selector yanlış butona basar');
+    addLog('info',  'Ama: scope=panel-erp + data-qa=submit → panel anchor hâlâ çalışır');
+    showNotif('warn', '🔀 Swap: Decoy ERP panelinde');
+  } else {
+    addLog('info', 'Swap geri alındı: PRIMARY panel-erp\'de');
+    showNotif('info', '🔀 Normal düzen');
+  }
+}
+
+// ─── AUTO DRIFT ENGINE (with conflict gating) ────────────
+const overlayOpen = () => document.getElementById('overlay').classList.contains('active');
+const popupOpen   = () => document.getElementById('popup-modal').classList.contains('show');
+
+setInterval(() => {
+  const prob = () => Math.random() * 100 < intensity;
+
+  // Selector drift — always independent
+  if (drifts.randomId && prob()) applyIdDrift();
+
+  // Overlay: only fires if no popup is open (avoid double-blocking)
+  if (drifts.overlay && prob() && !popupOpen())
+    trigOverlay(Math.floor(Math.random() * 4000 + 1500));
+
+  // Popup: only fires if overlay is not active (same reason)
+  if (drifts.popup && prob() && !overlayOpen()) trigPopup();
+
+  // Validation: randomly picks rule-shift or category shuffle
+  if (drifts.validation && prob()) {
+    Math.random() > 0.5 ? manualValidationShift() : shuffleCategories();
+  }
+
+  // Button order swap — fires every tick when active (deterministic every 3s)
+  if (drifts.swap) swapButtons();
+}, 3000);
+
+// ─── SESSION ─────────────────────────────────────────────
+function trigSessionExpired() {
+  document.getElementById('session-modal').classList.add('show');
+  addLog('error', 'SESSION EXPIRED — yeniden giriş gerekli');
+  showNotif('err', '⏱ Session expired');
+}
+
+function sessionRelogin() {
+  document.getElementById('session-modal').classList.remove('show');
+  runCounter++;
+  const runLbl = '#' + String(runCounter).padStart(3,'0');
+  document.getElementById('tb-run').textContent = runLbl;
+  document.getElementById('form-run-id').textContent = 'RUN ' + runLbl;
+  addLog('ok', 'Session yenilendi (re-login simüle edildi)');
+  showNotif('ok', '✓ Session yenilendi');
+}
+
+// ─── BATCH ───────────────────────────────────────────────
+function loadNewBatch() {
+  currentBatch = (currentBatch + 1) % batchPool.length;
+  invoices = [...batchPool[currentBatch]];
+  const bLabel = 'B-' + String(currentBatch+1).padStart(3,'0');
+
+  runCounter++;
+  const rLabel = '#' + String(runCounter).padStart(3,'0');
+  document.getElementById('tb-batch').textContent     = bLabel;
+  document.getElementById('batch-lbl').textContent    = bLabel;
+  document.getElementById('tb-run').textContent       = rLabel;
+  document.getElementById('form-run-id').textContent  = 'RUN ' + rLabel;
+
+  const newPending = invoices.filter(i=>i.status==='pending').length;
+  const newErrors  = invoices.filter(i=>i.status==='error').length;
+  pending  += newPending;
+  rejected += newErrors;
+  updateStats();
+  clearForm();
+  renderTable();
+
+  if (currentBatch === 3) {
+    addLog('error', `Batch ${bLabel}: ${newErrors} BOZUK satır — data drift testi!`);
+    showNotif('err', `⚠ Batch ${bLabel}: bozuk veriler mevcut`);
+  } else {
+    addLog('ok', `Batch ${bLabel}: ${newPending} pending + ${newErrors} error yüklendi`);
+    showNotif('ok', `✓ Batch ${bLabel} yüklendi`);
+  }
+}
+
+// ─── FORM ────────────────────────────────────────────────
+function processRow(id) {
+  const inv = invoices.find(i=>i.id===id);
+  if (!inv) return;
+  document.getElementById('f-inv').value    = inv.id;
+  document.getElementById('f-vendor').value = inv.vendor;
+  document.getElementById('f-amount').value = inv.amount;
+  addLog('info', `Satır seçildi: ${id}`);
+  document.querySelector('.form-panel').scrollIntoView({behavior:'smooth'});
+}
+
+function submitForm(type) {
+  // Popup açıkken submit → UiPath'in catch'e düşmesi için gerçek hata fırlat
+  if (popupOpen()) {
+    const popupTitle = document.querySelector('#popup-modal .popup-title')?.textContent || 'Unknown Dialog';
+    throw new Error(`[BLOCKED] Unexpected dialog is open: "${popupTitle}" — bot cannot proceed`);
+  }
+  if (overlayOpen()) {
+    throw new Error(`[BLOCKED] Loading overlay active — page not ready`);
+  }
+  const inv = document.getElementById('f-inv').value;
+  const amt = document.getElementById('f-amount').value;
+  const vnd = document.getElementById('f-vendor').value;
+  if (!inv || !amt || !vnd) {
+    showNotif('err', '✗ Zorunlu alanlar eksik');
+    addLog('error', 'Validation fail: zorunlu alan boş');
+    return;
+  }
+
+  const isDraft = (type === 'draft');
+  const btn = isDraft ? getDraft() : getPrimary();
+  if (!btn) { addLog('error', 'Buton bulunamadı'); return; }
+
+  btn.disabled = true;
+  btn.textContent = '⏳ İşleniyor...';
+  document.getElementById('submit-status').textContent = '';
+
+  setTimeout(() => {
+    btn.disabled = false;
+    btn.textContent = 'Fatura Kaydet';
+
+    if (isDraft) {
+      // YANLIŞ BUTON — görsel alarm
+      flashScreen('rgba(255,69,96,0.18)');
+      showDecoyAlarm(inv);
+      addLog('error', `⛔ DECOY BASILDI → ${inv} ERP'ye GİTMEDİ!`);
+      document.getElementById('submit-status').textContent = '⛔ YANLIŞ BUTON — ERP gönderimi YAPILMADI';
+    } else {
+      // DOĞRU BUTON — başarı
+      const ok = Math.random() > 0.15;
+      if (ok) {
+        processed++; pending = Math.max(0, pending - 1); updateStats();
+        flashScreen('rgba(79,255,176,0.12)');
+        showNotif('ok', `✓ ${inv} → ERP'ye gönderildi`);
+        addLog('ok', `Submit OK → ${inv} (PRIMARY ✓)`);
+        document.getElementById('submit-status').textContent = `✓ ${inv} ERP'ye iletildi`;
+        clearForm();
+      } else {
+        rejected++; updateStats();
+        showNotif('err', `✗ ${inv} kaydedilemedi`);
+        addLog('error', `Submit FAILED → ${inv}`);
+        document.getElementById('submit-status').textContent = '✗ Hata — tekrar deneyin';
+      }
+    }
+  }, isDraft ? 600 : Math.floor(Math.random() * 1500 + 500));
+}
+
+// ─── VISUAL FEEDBACK HELPERS ─────────────────────────────
+function flashScreen(color) {
+  const flash = document.createElement('div');
+  flash.style.cssText = `
+    position:fixed;inset:0;background:${color};z-index:500;
+    pointer-events:none;transition:opacity 0.6s;
+  `;
+  document.body.appendChild(flash);
+  requestAnimationFrame(() => {
+    setTimeout(() => { flash.style.opacity = '0'; setTimeout(() => flash.remove(), 650); }, 80);
+  });
+}
+
+function showDecoyAlarm(inv) {
+  // Büyük kırmızı banner — ekranda 4 sn kalır
+  const banner = document.createElement('div');
+  banner.style.cssText = `
+    position:fixed;top:80px;left:50%;transform:translateX(-50%);
+    background:#0f0508;border:2px solid var(--danger);border-radius:10px;
+    padding:20px 32px;z-index:400;text-align:center;
+    box-shadow:0 0 40px rgba(255,69,96,0.3);min-width:380px;
+    animation:slideDown 0.3s ease;
+  `;
+  banner.innerHTML = `
+    <div style="font-size:28px;margin-bottom:8px;">⛔</div>
+    <div style="font-family:var(--display);font-weight:700;font-size:18px;color:var(--danger);margin-bottom:6px;">
+      YANLIŞ BUTONA BASILDI
+    </div>
+    <div style="font-family:var(--mono);font-size:12px;color:#ff8fa0;line-height:1.8;">
+      Fatura: <strong>${inv}</strong><br>
+      Durum: <strong>TASLAK</strong> — ERP'ye GÖNDERİLMEDİ<br>
+      Bot doğru butonu seçemedi.
+    </div>
+    <div style="margin-top:12px;font-family:var(--mono);font-size:10px;color:#6b3040;
+      background:rgba(255,69,96,0.08);border:1px solid rgba(255,69,96,0.2);
+      border-radius:4px;padding:6px 10px;">
+      data-qa="save-draft" ≠ data-qa="submit"
+    </div>
+  `;
+  document.body.appendChild(banner);
+  setTimeout(() => {
+    banner.style.transition = 'opacity 0.4s';
+    banner.style.opacity = '0';
+    setTimeout(() => banner.remove(), 450);
+  }, 4000);
+}
+
+function clearForm() {
+  ['f-inv','f-vendor','f-amount','f-cc','f-desc'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('f-date').value = '';
+  document.getElementById('f-cat').value  = '';
+  document.getElementById('submit-status').textContent = '';
+}
+
+function exportReport() {
+  showNotif('ok', 'Rapor oluşturuldu — ' + document.getElementById('batch-lbl').textContent);
+  addLog('info', `Report → processed:${processed} pending:${pending} rejected:${rejected}`);
+}
+
+// ─── LOG & NOTIF ─────────────────────────────────────────
+function addLog(type, msg) {
+  const panel = document.getElementById('log-panel');
+  const ts = new Date().toLocaleTimeString('tr-TR', {hour12:false});
+  const div = document.createElement('div');
+  div.className = 'log-entry ' + type;
+  div.textContent = `[${ts}] ${msg}`;
+  panel.appendChild(div);
+  panel.scrollTop = panel.scrollHeight;
+}
+function clearLog() { document.getElementById('log-panel').innerHTML = ''; }
+
+function showNotif(type, msg) {
+  const wrap = document.getElementById('notif-wrap');
+  const div  = document.createElement('div');
+  div.className = 'notif ' + type;
+  div.textContent = msg;
+  wrap.appendChild(div);
+  setTimeout(() => div.remove(), 3200);
+}
+
+// ─── INIT ────────────────────────────────────────────────
+renderTable();
+renderCategories();
+updateStats();
+applyIdDrift();
+mountButtons(true); // Primary → panel-erp, Decoy → panel-draft
+
+addLog('ok',     'Playground başlatıldı — Batch B-001, 5 fatura hazır');
+addLog('anchor', 'Anchor ON → data-qa="submit" stabil | id zaten drift edildi (başlangıçta)');
+addLog('info',   'UiPath selector önerisi: <webctrl tag="BUTTON" data-qa="submit" /> — id\'yi çıkar!');
+addLog('info',   'Healing Agent → Disabled | Targeting → sadece Selector açık olsun');
+addLog('info',   'B-004 = Data Drift batch (bozuk satırlar)');
+</script>
+</body>
+</html>
